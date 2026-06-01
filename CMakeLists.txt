@@ -22,3 +22,12 @@ add_executable(benchmark_vector_add
 set_target_properties(benchmark_vector_add PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
+
+add_executable(benchmark_reduction
+    benchmarks/benchmark_reduction.cu
+    kernels/reduction.cu
+)
+
+set_target_properties(benchmark_reduction PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
