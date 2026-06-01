@@ -87,12 +87,12 @@ int main() {
 
     // TODO 10:
     // 打印 PASS / FAIL
-    std::cout << (err < 1e-6f ? "PASS" : "FAIL") << " max_abs_error=" << err << '\n';
+    std::cout << (max_err < 1e-6f ? "PASS" : "FAIL") << " max_abs_error=" << max_err << '\n';
     // TODO 11:
     // cudaFree
     CUDA_CHECK(cudaFree(d_a));
     CUDA_CHECK(cudaFree(d_b));
-    CUDA_CHECK(cudafree(d_c));
+    CUDA_CHECK(cudaFree(d_c));
 
     return 0;
 }

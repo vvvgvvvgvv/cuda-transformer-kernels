@@ -4,7 +4,7 @@
 
 __global__ void reduction_sum_kernels(const float* d_input,
                                       float* d_partial_sums,
-                                      int n,){
+                                      int n){
     extern __shared__ float sdata[];
     int tid=threadIdx.x;
     int global_idx=blockIdx.x*blockDim.x+threadIdx.x;
@@ -25,7 +25,7 @@ __global__ void reduction_sum_kernels(const float* d_input,
     }
 
     if(tid==0){
-        d__partial_sums[blockIdx.x]=sdata[0];
+        d_partial_sums[blockIdx.x]=sdata[0];
     }
 
 }
