@@ -23,11 +23,20 @@ set_target_properties(benchmark_vector_add PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
 
-add_executable(benchmark_reduction
-    benchmarks/benchmark_reduction.cu
+add_executable(benchmark_reduction_sum
+    benchmarks/benchmark_reduction_sum.cu
     kernels/reduction.cu
 )
 
 set_target_properties(benchmark_reduction PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+add_executable(benchmark_reduction_max
+    benchmarks/benchmark_reduction_max.cu
+    kernels/reduction.cu
+)
+
+set_target_properties(benchmark_reduction_max PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )

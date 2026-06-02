@@ -5,3 +5,7 @@ void reduction_sum_cuda(const float* d_input,
                         int n,
                         int block_size);
 
+void reduction_max_cuda(const float* d_input,
+                        float* d_partial_max,
+                        int n,
+                        int block_size);

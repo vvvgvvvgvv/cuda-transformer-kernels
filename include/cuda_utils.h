@@ -3,7 +3,7 @@
 #include <cuda_runtime.h>
 #include <cstdio>
 #include <cstdlib>
-
+//错误检查宏
 #define CUDA_CHECK(call) do {                                      \
     cudaError_t err = (call);                                      \
     if (err != cudaSuccess) {                                      \
