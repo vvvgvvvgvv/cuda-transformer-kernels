@@ -84,7 +84,7 @@ int main() {
 
 
     // 打印 PASS / FAIL
-    std::cout << (err < 1e-6f ? "PASS" : "FAIL") << " max_abs_error=" << max_err << '\n';
+    std::cout << (max_err < 1e-6f ? "PASS" : "FAIL") << " max_abs_error=" << max_err << '\n';
 
     // cudaFree
     CUDA_CHECK(cudaFree(d_a));

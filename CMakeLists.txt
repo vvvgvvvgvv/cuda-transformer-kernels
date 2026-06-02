@@ -28,7 +28,7 @@ add_executable(benchmark_reduction_sum
     kernels/reduction.cu
 )
 
-set_target_properties(benchmark_reduction PROPERTIES
+set_target_properties(benchmark_reduction_sum PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
 
@@ -38,5 +38,14 @@ add_executable(benchmark_reduction_max
 )
 
 set_target_properties(benchmark_reduction_max PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+add_executable(benchmark_softmax
+    benchmarks/benchmark_softmax.cu
+    kernels/softmax.cu
+)
+
+set_target_properties(benchmark_softmax PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )

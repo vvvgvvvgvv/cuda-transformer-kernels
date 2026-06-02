@@ -45,7 +45,7 @@ int main() {
     CUDA_CHECK(cudaMalloc(&d_partial_sums, partial_bytes));
 
     // cudaMemcpy h_x -> d_x
-    CUDA_CHECK(cudaMemcpy(d_x,h_x.data(),input_bytes,cudaMemcpyHostTpDevice));
+    CUDA_CHECK(cudaMemcpy(d_x,h_x.data(),input_bytes,cudaMemcpyHostToDevice));
   
     // reduction_sum_cuda
     reduction_sum_cuda(d_x, d_partial_sums, n, block_size);
