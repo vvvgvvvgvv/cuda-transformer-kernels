@@ -3,35 +3,30 @@
 #include <random>
 #include <cmath>
 #include <algorithm>
-#include <cfloat>
 
 #include "cuda_utils.h"
-#include "softmax.h"
+#include "rmsnorm.h"
 
-void softmax_cpu(const std::vector<float>& input,
+void rmsnorm_cpu(const std::vector<float>& input,
+                 const std::vector<float>& weight,
                  std::vector<float>& output,
                  int num_rows,
-                 int hidden_dim) {
+                 int hidden_dim,
+                 float eps) {
     for (int row = 0; row < num_rows; ++row) {
         int offset = row * hidden_dim;
 
-        // 1. 求这一行的最大值，做数值稳定
-        float max_val = -FLT_MAX;
+        float sum_sq = 0.0f;
+
         for (int col = 0; col < hidden_dim; ++col) {
-            max_val = std::max(max_val, input[offset + col]);
+            float v = input[offset + col];
+            sum_sq += v * v;
         }
 
-        // 2. 计算 exp(x - max)，并求和
-        float sum = 0.0f;
-        for (int col = 0; col < hidden_dim; ++col) {
-            float val = std::exp(input[offset + col] - max_val);
-            output[offset + col] = val;
-            sum += val;
-        }
+        float rms = std::sqrt(sum_sq / hidden_dim + eps);
 
-        // 3. 归一化
         for (int col = 0; col < hidden_dim; ++col) {
-            output[offset + col] /= sum;
+            output[offset + col] = input[offset + col] / rms * weight[col];
         }
     }
 }
@@ -49,69 +44,83 @@ float max_abs_error(const std::vector<float>& ref,
 }
 
 int main() {
-    const int num_rows = 1024;
-    const int hidden_dim = 1024;
+    const int num_rows = 32;
+    const int hidden_dim = 4096;
     const int block_size = 256;
+    const float eps = 1e-6f;
 
     const int n = num_rows * hidden_dim;
-    const size_t bytes = n * sizeof(float);
+    const size_t input_bytes = n * sizeof(float);
+    const size_t weight_bytes = hidden_dim * sizeof(float);
 
-    // 创建 host vectors
     std::vector<float> h_input(n);
+    std::vector<float> h_weight(hidden_dim);
     std::vector<float> h_output_cpu(n);
     std::vector<float> h_output_gpu(n);
 
-    // 随机初始化 input
     std::mt19937 rng(1234);
-    std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
+    std::uniform_real_distribution<float> input_dist(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> weight_dist(0.5f, 1.5f);
 
     for (int i = 0; i < n; ++i) {
-        h_input[i] = dist(rng);
+        h_input[i] = input_dist(rng);
     }
 
-    // CPU reference
-    softmax_cpu(h_input, h_output_cpu, num_rows, hidden_dim);
+    for (int i = 0; i < hidden_dim; ++i) {
+        h_weight[i] = weight_dist(rng);
+    }
 
-    // cudaMalloc
+    rmsnorm_cpu(h_input,
+                h_weight,
+                h_output_cpu,
+                num_rows,
+                hidden_dim,
+                eps);
+
     float* d_input = nullptr;
+    float* d_weight = nullptr;
     float* d_output = nullptr;
 
-    CUDA_CHECK(cudaMalloc(&d_input, bytes));
-    CUDA_CHECK(cudaMalloc(&d_output, bytes));
+    CUDA_CHECK(cudaMalloc(&d_input, input_bytes));
+    CUDA_CHECK(cudaMalloc(&d_weight, weight_bytes));
+    CUDA_CHECK(cudaMalloc(&d_output, input_bytes));
 
-    // cudaMemcpy H2D
     CUDA_CHECK(cudaMemcpy(d_input,
                           h_input.data(),
-                          bytes,
+                          input_bytes,
                           cudaMemcpyHostToDevice));
 
-    // softmax_cuda + CUDA_KERNEL_CHECK
-    softmax_cuda(d_input,
+    CUDA_CHECK(cudaMemcpy(d_weight,
+                          h_weight.data(),
+                          weight_bytes,
+                          cudaMemcpyHostToDevice));
+
+    rmsnorm_cuda(d_input,
+                 d_weight,
                  d_output,
                  num_rows,
                  hidden_dim,
+                 eps,
                  block_size);
 
     CUDA_KERNEL_CHECK();
 
-    // cudaMemcpy D2H
     CUDA_CHECK(cudaMemcpy(h_output_gpu.data(),
                           d_output,
-                          bytes,
+                          input_bytes,
                           cudaMemcpyDeviceToHost));
 
-    // max_abs_error + PASS/FAIL
     float max_err = max_abs_error(h_output_cpu, h_output_gpu);
     bool passed = max_err < 1e-5f;
 
-    std::cout << "Softmax Correctness\n";
+    std::cout << "RMSNorm Correctness\n";
     std::cout << "Shape: " << num_rows << " x " << hidden_dim << "\n";
     std::cout << "Block size: " << block_size << "\n";
     std::cout << "Max abs error: " << max_err << "\n";
     std::cout << "Status: " << (passed ? "PASS" : "FAIL") << "\n";
 
-    // cudaFree
     CUDA_CHECK(cudaFree(d_input));
+    CUDA_CHECK(cudaFree(d_weight));
     CUDA_CHECK(cudaFree(d_output));
 
     return passed ? 0 : 1;

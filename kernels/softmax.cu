@@ -19,23 +19,45 @@ __global__ void softmax_kernel(const float* input,
     const float* row_input = input + row * hidden_dim;
     float* row_output = output + row * hidden_dim;
 
-    // TODO 1:
-    // 每个线程负责 row 里的多个元素，求 local_max
+    float local_max = -FLT_MAX;
+    for (int col = tid; col < hidden_dim; col += blockDim.x) {
+        local_max = fmaxf(local_max, row_input[col]);
+    }
 
-    // TODO 2:
-    // 把 local_max 写入 sdata[tid]
-    // block 内 reduction 求 row_max
+    sdata[tid] = local_max;
+    __syncthreads();
 
-    // TODO 3:
-    // 每个线程计算 exp(x - row_max)，同时求 local_sum
-    // 可以先把 exp 结果写到 row_output[col]
+    for (int active = blockDim.x; active > 1; active = (active + 1) >> 1) {
+        int half = (active + 1) >> 1;
+        if (tid + half < active) {
+            sdata[tid] = fmaxf(sdata[tid], sdata[tid + half]);
+        }
+        __syncthreads();
+    }
 
-    // TODO 4:
-    // 把 local_sum 写入 sdata[tid]
-    // block 内 reduction 求 row_sum
+    float row_max = sdata[0];
+    float local_sum = 0.0f;
+    for (int col = tid; col < hidden_dim; col += blockDim.x) {
+        float value = __expf(row_input[col] - row_max);
+        row_output[col] = value;
+        local_sum += value;
+    }
 
-    // TODO 5:
-    // 每个线程把 row_output[col] /= row_sum
+    sdata[tid] = local_sum;
+    __syncthreads();
+
+    for (int active = blockDim.x; active > 1; active = (active + 1) >> 1) {
+        int half = (active + 1) >> 1;
+        if (tid + half < active) {
+            sdata[tid] += sdata[tid + half];
+        }
+        __syncthreads();
+    }
+
+    float inv_row_sum = 1.0f / sdata[0];
+    for (int col = tid; col < hidden_dim; col += blockDim.x) {
+        row_output[col] *= inv_row_sum;
+    }
 }
 
 void softmax_cuda(const float* d_input,

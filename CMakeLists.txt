@@ -49,3 +49,29 @@ add_executable(benchmark_softmax
 set_target_properties(benchmark_softmax PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
+
+add_executable(benchmark_rmsnorm
+    benchmarks/benchmark_rmsnorm.cu
+    kernels/rmsnorm.cu
+)
+
+set_target_properties(benchmark_rmsnorm PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+add_executable(benchmark_gemm_naive
+    benchmarks/benchmark_gemm_naive.cu
+    kernels/gemm.cu
+)
+
+set_target_properties(benchmark_gemm_naive PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+add_executable(benchmark_gemm_tiled
+    benchmarks/benchmark_gemm_tiled.cu
+    kernels/gemm.cu
+)
+
+set_target_properties(benchmark_gemm_tiled PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON)
