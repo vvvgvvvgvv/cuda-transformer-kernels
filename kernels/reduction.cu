@@ -10,7 +10,8 @@ __global__ void reduction_sum_kernels(const float* d_input,
     extern __shared__ float sdata[];
     int tid=threadIdx.x;
     int global_idx=blockIdx.x*blockDim.x+threadIdx.x;
-    // 每个线程从 global memory 读一个数到 shared memory
+
+    // Out-of-range lanes contribute the identity value for sum.
     if(global_idx<n){
         sdata[tid]=d_input[global_idx];
     }
@@ -18,7 +19,8 @@ __global__ void reduction_sum_kernels(const float* d_input,
         sdata[tid]=0.0f;
     }
     __syncthreads();
-    //在 shared memory 里做 reduction
+
+    // Reduce each block's slice to one partial sum in shared memory.
     for(int stride=blockDim.x/2;stride>0;stride>>=1){
         if(tid<stride){
             sdata[tid]+=sdata[tid+stride];
@@ -52,7 +54,8 @@ __global__ void reduction_max_kernels(const float*d_input,
 
     int tid=threadIdx.x;
     int global_idx=blockIdx.x*blockDim.x+threadIdx.x;
-    
+
+    // Out-of-range lanes contribute the identity value for maximum.
     if(global_idx<n){
         sdata[tid]=d_input[global_idx];
     }
@@ -60,6 +63,8 @@ __global__ void reduction_max_kernels(const float*d_input,
         sdata[tid]=-FLT_MAX;
     }
     __syncthreads();
+
+    // Reduce each block's slice to one partial maximum in shared memory.
     for(int stride=blockDim.x/2;stride>0;stride>>=1){
         if(tid<stride){
             sdata[tid]=fmaxf(sdata[tid],sdata[tid+stride]);
@@ -83,4 +88,4 @@ void reduction_max_cuda(const float* d_input,
         d_partial_max,
         n
     );
-} 
+}

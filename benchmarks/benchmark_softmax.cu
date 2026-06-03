@@ -15,13 +15,12 @@ void softmax_cpu(const std::vector<float>& input,
     for (int row = 0; row < num_rows; ++row) {
         int offset = row * hidden_dim;
 
-        // 1. 求这一行的最大值，做数值稳定
+        // Subtract the row maximum for numerical stability.
         float max_val = -FLT_MAX;
         for (int col = 0; col < hidden_dim; ++col) {
             max_val = std::max(max_val, input[offset + col]);
         }
 
-        // 2. 计算 exp(x - max)，并求和
         float sum = 0.0f;
         for (int col = 0; col < hidden_dim; ++col) {
             float val = std::exp(input[offset + col] - max_val);
@@ -29,7 +28,6 @@ void softmax_cpu(const std::vector<float>& input,
             sum += val;
         }
 
-        // 3. 归一化
         for (int col = 0; col < hidden_dim; ++col) {
             output[offset + col] /= sum;
         }
@@ -56,12 +54,10 @@ int main() {
     const int n = num_rows * hidden_dim;
     const size_t bytes = n * sizeof(float);
 
-    // 创建 host vectors
     std::vector<float> h_input(n);
     std::vector<float> h_output_cpu(n);
     std::vector<float> h_output_gpu(n);
 
-    // 随机初始化 input
     std::mt19937 rng(1234);
     std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
 
@@ -69,23 +65,19 @@ int main() {
         h_input[i] = dist(rng);
     }
 
-    // CPU reference
     softmax_cpu(h_input, h_output_cpu, num_rows, hidden_dim);
 
-    // cudaMalloc
     float* d_input = nullptr;
     float* d_output = nullptr;
 
     CUDA_CHECK(cudaMalloc(&d_input, bytes));
     CUDA_CHECK(cudaMalloc(&d_output, bytes));
 
-    // cudaMemcpy H2D
     CUDA_CHECK(cudaMemcpy(d_input,
                           h_input.data(),
                           bytes,
                           cudaMemcpyHostToDevice));
 
-    // softmax_cuda + CUDA_KERNEL_CHECK
     softmax_cuda(d_input,
                  d_output,
                  num_rows,
@@ -94,13 +86,11 @@ int main() {
 
     CUDA_KERNEL_CHECK();
 
-    // cudaMemcpy D2H
     CUDA_CHECK(cudaMemcpy(h_output_gpu.data(),
                           d_output,
                           bytes,
                           cudaMemcpyDeviceToHost));
 
-    // max_abs_error + PASS/FAIL
     float max_err = max_abs_error(h_output_cpu, h_output_gpu);
     bool passed = max_err < 1e-5f;
 
@@ -110,7 +100,6 @@ int main() {
     std::cout << "Max abs error: " << max_err << "\n";
     std::cout << "Status: " << (passed ? "PASS" : "FAIL") << "\n";
 
-    // cudaFree
     CUDA_CHECK(cudaFree(d_input));
     CUDA_CHECK(cudaFree(d_output));
 

@@ -49,13 +49,14 @@ __global__ void gemm_tiled_kernel(const float* A,
     int col = blockIdx.x * TILE_SIZE + threadIdx.x;
 
     float sum = 0.0f;
-
     int num_tiles = (K + TILE_SIZE - 1) / TILE_SIZE;
 
     for (int t = 0; t < num_tiles; ++t) {
         int a_col = t * TILE_SIZE + threadIdx.x;
         int b_row = t * TILE_SIZE + threadIdx.y;
 
+        // Zero padding keeps boundary tiles valid when dimensions are not
+        // multiples of TILE_SIZE.
         if (row < M && a_col < K) {
             tile_A[threadIdx.y][threadIdx.x] = A[row * K + a_col];
         } else {

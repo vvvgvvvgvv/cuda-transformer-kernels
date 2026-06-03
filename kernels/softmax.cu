@@ -19,6 +19,7 @@ __global__ void softmax_kernel(const float* input,
     const float* row_input = input + row * hidden_dim;
     float* row_output = output + row * hidden_dim;
 
+    // Find the row maximum first to keep exponentials numerically stable.
     float local_max = -FLT_MAX;
     for (int col = tid; col < hidden_dim; col += blockDim.x) {
         local_max = fmaxf(local_max, row_input[col]);
@@ -27,6 +28,7 @@ __global__ void softmax_kernel(const float* input,
     sdata[tid] = local_max;
     __syncthreads();
 
+    // This reduction handles block sizes that are not powers of two.
     for (int active = blockDim.x; active > 1; active = (active + 1) >> 1) {
         int half = (active + 1) >> 1;
         if (tid + half < active) {
@@ -37,6 +39,8 @@ __global__ void softmax_kernel(const float* input,
 
     float row_max = sdata[0];
     float local_sum = 0.0f;
+
+    // Store exp(x - max) temporarily in output before normalizing in place.
     for (int col = tid; col < hidden_dim; col += blockDim.x) {
         float value = __expf(row_input[col] - row_max);
         row_output[col] = value;

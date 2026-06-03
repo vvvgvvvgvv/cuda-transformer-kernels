@@ -21,7 +21,7 @@ __global__ void rmsnorm_kernel(const float* input,
     const float* row_input = input + row * hidden_dim;
     float* row_output = output + row * hidden_dim;
 
-    // Step 1: 每个线程计算自己负责元素的平方和
+    // Each block handles one row; threads stride across the hidden dimension.
     float local_sum = 0.0f;
 
     for (int col = tid; col < hidden_dim; col += blockDim.x) {
@@ -29,7 +29,7 @@ __global__ void rmsnorm_kernel(const float* input,
         local_sum += v * v;
     }
 
-    // Step 2: block 内 shared memory reduction，求整行平方和
+    // Reduce per-thread squared sums to the row total.
     sdata[tid] = local_sum;
     __syncthreads();
 
@@ -43,7 +43,6 @@ __global__ void rmsnorm_kernel(const float* input,
     float sum_sq = sdata[0];
     float rms = sqrtf(sum_sq / hidden_dim + eps);
 
-    // Step 3: 每个线程归一化自己负责的元素
     for (int col = tid; col < hidden_dim; col += blockDim.x) {
         row_output[col] = row_input[col] / rms * weight[col];
     }
