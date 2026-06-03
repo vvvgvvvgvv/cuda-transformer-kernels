@@ -74,4 +74,14 @@ add_executable(benchmark_gemm_tiled
 )
 
 set_target_properties(benchmark_gemm_tiled PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON)
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+add_executable(benchmark_gemm_compare
+    benchmarks/benchmark_gemm_compare.cu
+    kernels/gemm.cu
+)
+
+set_target_properties(benchmark_gemm_compare PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
